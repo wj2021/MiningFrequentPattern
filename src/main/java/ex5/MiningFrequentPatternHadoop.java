@@ -18,6 +18,10 @@ import java.io.*;
 import java.net.URI;
 import java.util.*;
 
+/**
+ * 频繁项集挖掘Hadoop实现
+ * 基于Apriori算法，使用MR并行化
+ */
 public class MiningFrequentPatternHadoop {
     public static void main(String[] args) throws Exception {
         BasicConfigurator.configure(); // 使用默认的日志配置，可以在idea运行时显示日志
