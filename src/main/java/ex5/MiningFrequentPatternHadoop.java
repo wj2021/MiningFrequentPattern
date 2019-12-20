@@ -94,12 +94,12 @@ class MiningFrequentPatternMapper extends Mapper<LongWritable, Text, ItemSetText
     private double minSupp = 1.0;
 
     @Override
-    protected void setup(Context context) throws IOException, InterruptedException {
+    protected void setup(Context context) {
         minSupp = Double.parseDouble(context.getConfiguration().get("minSupp"));
     }
 
     @Override
-    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+    protected void map(LongWritable key, Text value, Context context) {
         Transaction<Integer> transaction = new Transaction<>(value.toString(), "\\s+");
         transactionList.add(transaction);
     }
@@ -115,8 +115,7 @@ class MiningFrequentPatternMapper extends Mapper<LongWritable, Text, ItemSetText
             e.printStackTrace();
         }
         for(Map.Entry<Set<Integer>, Integer> item : result.entrySet()) {
-            String key = item.getKey().toString();
-            outKey.set(key);
+            outKey.set(item.getKey().toString());
             outValue.set(item.getValue());
             context.write(outKey, outValue);
         }
@@ -158,7 +157,7 @@ class MiningFrequentPatternMapper2 extends Mapper<LongWritable, Text, ItemSetTex
     private List<List<String>> candidateList = new ArrayList<>();
 
     @Override
-    protected void setup(Context context) throws IOException, InterruptedException {
+    protected void setup(Context context) throws IOException {
         // 读取cache中的文件获取候选的频繁项集
         URI[] uris = context.getCacheFiles();
         FileSystem hdfs = FileSystem.get(context.getConfiguration());
@@ -168,7 +167,7 @@ class MiningFrequentPatternMapper2 extends Mapper<LongWritable, Text, ItemSetTex
             }
             FSDataInputStream inputStream = hdfs.open(new Path(uri.toString()));
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            String line = null;
+            String line;
             while((line = reader.readLine()) != null && line.length() > 0) {
                 List<String> items = new ArrayList<>(Arrays.asList(line.substring(1, line.length()-1).split(",\\s+")));
                 candidateList.add(items);
@@ -192,14 +191,11 @@ class MiningFrequentPatternMapper2 extends Mapper<LongWritable, Text, ItemSetTex
 class MiningFrequentPatternReducer2 extends Reducer<ItemSetText, IntWritable, ItemSetText, DoubleWritable> {
     private DoubleWritable outValue = new DoubleWritable();
 
-    private double minSupp = 1.0;
-
     private int totalTransactionSize = Integer.MAX_VALUE;
+    private int minCount = totalTransactionSize;
 
     @Override
-    protected void setup(Context context) throws IOException, InterruptedException {
-        minSupp = Double.parseDouble(context.getConfiguration().get("minSupp"));
-
+    protected void setup(Context context) throws IOException {
         // 读取cache中的totalTransactionSize文件获取 transaction 总数
         URI[] uris = context.getCacheFiles();
         FileSystem hdfs = FileSystem.get(context.getConfiguration());
@@ -214,6 +210,9 @@ class MiningFrequentPatternReducer2 extends Reducer<ItemSetText, IntWritable, It
                break;
            }
         }
+
+        double minSupp = Double.parseDouble(context.getConfiguration().get("minSupp"));
+        minCount = (int) Math.ceil(minSupp * totalTransactionSize);
     }
 
     @Override
@@ -222,7 +221,7 @@ class MiningFrequentPatternReducer2 extends Reducer<ItemSetText, IntWritable, It
         for(IntWritable v : values) {
             sum += v.get();
         }
-        if(sum >= Math.ceil(totalTransactionSize * minSupp)) {
+        if(sum >= minCount) {
             outValue.set(sum / (double)totalTransactionSize);
             context.write(key, outValue);
         }
