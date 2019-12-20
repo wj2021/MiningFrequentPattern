@@ -1,10 +1,7 @@
 package ex5;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -38,6 +35,7 @@ public class MiningFrequentPatternHadoop {
 
         Configuration conf = new Configuration();
         conf.set("minSupp", args[3]);
+        conf.set("outputDir", args[1]);
 
         // 判断输出路径是否存在，如果存在，则删除
         FileSystem hdfs = FileSystem.get(conf);
@@ -75,13 +73,14 @@ public class MiningFrequentPatternHadoop {
 
         FileInputFormat.addInputPath(job2, new Path(args[0]));
         FileOutputFormat.setOutputPath(job2, new Path(args[2]));
-
+        job.setNumReduceTasks(5);job2.setNumReduceTasks(5);
         if(job.waitForCompletion(true)) {
-            //将job的结果存到cache中去
+            //将第一个job的结果存到cache中去
             FileStatus[] status = hdfs.listStatus(new Path(args[1]));
             for(FileStatus fs : status) {
                 job2.addCacheFile(new URI(args[1] + "/" + fs.getPath().getName()));
             }
+
             System.out.println(job2.waitForCompletion(true) ? 0 : 1);
         }
     }
@@ -121,28 +120,52 @@ class MiningFrequentPatternMapper extends Mapper<LongWritable, Text, ItemSetText
             outValue.set(item.getValue());
             context.write(outKey, outValue);
         }
+        // 将该分片中的 transactionList 大小也输出到输出文件中给reduce计算总transaction大小
+        outKey.set("[transactionSize]");
+        outValue.set(transactionList.size());
+        context.write(outKey, outValue);
     }
 }
 
 class MiningFrequentPatternReducer extends Reducer<ItemSetText, IntWritable, ItemSetText, NullWritable> {
     @Override
     protected void reduce(ItemSetText key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-        context.write(key, NullWritable.get());
+        if("[transactionSize]".equals(key.toString())) {
+            int totalTransactionSize = 0;
+            for(IntWritable v : values) {
+                totalTransactionSize += v.get();
+            }
+            // 创建新的hdfs文件专门用于存储 transaction 总数
+            FileSystem hdfs = FileSystem.get(context.getConfiguration());
+            Path path = new Path(context.getConfiguration().get("outputDir")+"/totalTransactionSize");
+            if(hdfs.exists(path)) {
+                hdfs.delete(path, true);
+            }
+            FSDataOutputStream out = hdfs.create(path);
+            out.write(String.valueOf(totalTransactionSize).getBytes());
+            out.flush();
+            out.close();
+        } else {
+            context.write(key, NullWritable.get());
+        }
     }
 }
 
 class MiningFrequentPatternMapper2 extends Mapper<LongWritable, Text, ItemSetText, IntWritable> {
     private ItemSetText outKey = new ItemSetText();
-    private IntWritable outValue = new IntWritable(1);
+    private final static IntWritable ONE = new IntWritable(1);
 
     private List<List<String>> candidateList = new ArrayList<>();
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        // 读取cache中的文件
+        // 读取cache中的文件获取候选的频繁项集
         URI[] uris = context.getCacheFiles();
-        FileSystem hdfs = FileSystem.get(new Configuration());
+        FileSystem hdfs = FileSystem.get(context.getConfiguration());
         for(URI uri : uris) {
+            if(uri.toString().contains("totalTransactionSize")) {
+                continue;
+            }
             FSDataInputStream inputStream = hdfs.open(new Path(uri.toString()));
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String line = null;
@@ -160,7 +183,7 @@ class MiningFrequentPatternMapper2 extends Mapper<LongWritable, Text, ItemSetTex
         for(List<String> candidate : candidateList) {
             if(tokenList.containsAll(candidate)) {
                 outKey.set(candidate.toString());
-                context.write(outKey, outValue);
+                context.write(outKey, ONE);
             }
         }
     }
@@ -168,14 +191,41 @@ class MiningFrequentPatternMapper2 extends Mapper<LongWritable, Text, ItemSetTex
 
 class MiningFrequentPatternReducer2 extends Reducer<ItemSetText, IntWritable, ItemSetText, DoubleWritable> {
     private DoubleWritable outValue = new DoubleWritable();
+
+    private double minSupp = 1.0;
+
+    private int totalTransactionSize = Integer.MAX_VALUE;
+
+    @Override
+    protected void setup(Context context) throws IOException, InterruptedException {
+        minSupp = Double.parseDouble(context.getConfiguration().get("minSupp"));
+
+        // 读取cache中的totalTransactionSize文件获取 transaction 总数
+        URI[] uris = context.getCacheFiles();
+        FileSystem hdfs = FileSystem.get(context.getConfiguration());
+        for(URI uri : uris) {
+           if(uri.toString().contains("totalTransactionSize")) {
+               FSDataInputStream inputStream = hdfs.open(new Path(uri.toString()));
+               BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+               String line = reader.readLine();
+               if(line != null && !line.isEmpty()) {
+                   totalTransactionSize = Integer.parseInt(line);
+               }
+               break;
+           }
+        }
+    }
+
     @Override
     protected void reduce(ItemSetText key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
         int sum = 0;
         for(IntWritable v : values) {
             sum += v.get();
         }
-        outValue.set(sum);
-        context.write(key, outValue);
+        if(sum >= Math.ceil(totalTransactionSize * minSupp)) {
+            outValue.set(sum / (double)totalTransactionSize);
+            context.write(key, outValue);
+        }
     }
 }
 
