@@ -40,8 +40,6 @@ public class Transaction<T> {
 
     @Override
     public String toString() {
-        return "Transaction{" +
-                "items=" + items +
-                '}';
+        return items.toString();
     }
 }

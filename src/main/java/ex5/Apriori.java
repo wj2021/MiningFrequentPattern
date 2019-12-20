@@ -89,7 +89,7 @@ public class Apriori<T> {
             int size = itemSetList.size();
             for(int i = 0; i < size; ++i) {
                 for(int j = i+1; j < size; ++j) {
-                    Set<T> newSet = new HashSet<>(itemSetList.get(i));
+                    Set<T> newSet = new TreeSet<>(itemSetList.get(i));
                     newSet.addAll(itemSetList.get(j)); // 集合的并运算
                     if(newSet.size() == t && !itemSetList2.contains(newSet)) {
                         itemSetList2.add(newSet);
