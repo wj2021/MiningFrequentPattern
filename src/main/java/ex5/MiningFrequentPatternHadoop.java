@@ -73,7 +73,10 @@ public class MiningFrequentPatternHadoop {
 
         FileInputFormat.addInputPath(job2, new Path(args[0]));
         FileOutputFormat.setOutputPath(job2, new Path(args[2]));
-        job.setNumReduceTasks(5);job2.setNumReduceTasks(5);
+
+        job.setNumReduceTasks(2);
+        job2.setNumReduceTasks(2);
+
         if(job.waitForCompletion(true)) {
             //将第一个job的结果存到cache中去
             FileStatus[] status = hdfs.listStatus(new Path(args[1]));
