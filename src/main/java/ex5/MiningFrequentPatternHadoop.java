@@ -20,6 +20,23 @@ import java.util.*;
  * 基于Apriori算法，使用MR并行化
  */
 public class MiningFrequentPatternHadoop {
+//    // 单机版Apriori算法测试
+//    public static void main(String[] args) throws Exception {
+//        BufferedReader bufferedReader = new BufferedReader(new FileReader("input_chess/chess1.dat"));
+//        String line;
+//        List<Transaction<Integer>> transactionList = new ArrayList<>();
+//        while((line=bufferedReader.readLine())!=null) {
+//            Transaction<Integer> ta = new Transaction<>(line, "\\s+");
+//            transactionList.add(ta);
+//        }
+//        Apriori<Integer> apriori = new Apriori<>(transactionList, 0.8);
+//        Map<Set<Integer>, Integer> result = apriori.getFrequentPattern();
+//        for(Map.Entry<Set<Integer>, Integer> r : result.entrySet()){
+//            System.out.println(r.getKey()+"    "+r.getValue());
+//        }
+//    }
+
+    // Hadoop并行化Apriori算法
     public static void main(String[] args) throws Exception {
         BasicConfigurator.configure(); // 使用默认的日志配置，可以在idea运行时显示日志
 
