@@ -65,7 +65,7 @@ object MiningFrequentPatternSpark {
     val candidateFrequent: Array[scala.collection.mutable.Set[Int]] = localFrequentPattern.collect()
     textRDD.flatMap(line => {
       val transaction: scala.collection.mutable.Set[Int] = scala.collection.mutable.TreeSet()
-      line.split("\\s+").map(_.toInt).foreach(transaction.add);
+      line.split("\\s+").map(_.toInt).foreach(transaction.add)
       val itr = candidateFrequent.iterator
       var result = Array[(scala.collection.mutable.Set[Int], Int)]()
       while (itr.hasNext) {
@@ -116,7 +116,7 @@ object MiningFrequentPatternSpark {
         var index:Int = 0
         val length:Int = tokens1.length
         while(index < length) {
-          if(!tokens1.equals(tokens2)) {
+          if(!tokens1(index).equals(tokens2(index))) {
             result = ItemSetText.compareString(tokens1(index), tokens2(index))
             index = length
           }
@@ -129,7 +129,7 @@ object MiningFrequentPatternSpark {
     // 将项集内部排个序
     def sortSet: ItemSet = {
       val tokens: Array[String] = this.sets.substring(this.sets.indexOf("(")+1, this.sets.indexOf(")")).split(",\\s+")
-      implicit val ordering = new Ordering[String] {
+      implicit val ordering: Ordering[String] = new Ordering[String] {
         override def compare(x: String, y: String): Int = {
           ItemSetText.compareString(x, y)
         }
