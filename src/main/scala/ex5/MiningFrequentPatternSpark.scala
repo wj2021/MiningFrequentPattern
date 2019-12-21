@@ -35,7 +35,7 @@ object MiningFrequentPatternSpark {
 
     // Spark配置
     val conf = new SparkConf()
-    conf.setMaster("local")
+    conf.setMaster("local[*]")
     conf.setAppName("Apriori FPM")
 
     val sc = new SparkContext(conf)
@@ -49,6 +49,7 @@ object MiningFrequentPatternSpark {
 
     // 在每个分区中利用apriori算法计算频繁项集，汇总作为候选频繁项集
     val localFrequentPattern: RDD[scala.collection.mutable.Set[Int]] = textRDD.mapPartitionsWithIndex((partId, Iterator) => {
+      println(partId+"===============================================================================================")
       val part_map = scala.collection.mutable.Map[Int, List[String]]()
       part_map(partId) = List[String]()
       while (Iterator.hasNext) {
