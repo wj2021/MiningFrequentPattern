@@ -315,8 +315,8 @@ class ItemSetText implements WritableComparable<ItemSetText> {
         // 排序
         List<String> a = new ArrayList<>(Arrays.asList(tokens));
         List<String> b = new ArrayList<>(Arrays.asList(otherTokens));
-        a.sort(this::compareString);
-        b.sort(this::compareString);
+        a.sort(ItemSetText::compareString);
+        b.sort(ItemSetText::compareString);
 
         for(int i = 0; i < a.size(); ++i) {
             int ans = compareString(a.get(i), b.get(i));
@@ -335,20 +335,13 @@ class ItemSetText implements WritableComparable<ItemSetText> {
     // 比较两个字符串的大小
     // 长度长的字符串大，
     // 否则比较字符串中的每个字符，ASCII码大的字符串大
-    private int compareString(String o1, String o2) {
+    public static int compareString(String o1, String o2) {
         int len1 = o1.length();
         int len2 = o2.length();
         if(len1 != len2) {
             return len1 - len2 > 0 ? 1 : -1;
         } else {
-            char[] o1Chs = o1.toCharArray();
-            char[] o2Chs = o2.toCharArray();
-            for(int i = 0; i < o1Chs.length; ++i) {
-                if (o1Chs[i] != o2Chs[i]) {
-                    return o1Chs[i] - o2Chs[i] > 0 ? 1 : -1;
-                }
-            }
-            return 0;
+            return o1.compareTo(o2);
         }
     }
 
