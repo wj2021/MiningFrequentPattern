@@ -12,6 +12,7 @@ import collection.JavaConverters._
 /**
  * 频繁项集挖掘
  * 基于Apriori算法，使用spark并行化
+ * 和ex5/MiningFrequentPatternHadoop.java实现思路相同
  */
 object MiningFrequentPatternSpark {
   def main(args: Array[String]): Unit = {
@@ -35,7 +36,7 @@ object MiningFrequentPatternSpark {
 
     // Spark配置
     val conf = new SparkConf()
-    conf.setMaster("local[*]")
+    conf.setMaster("local")
     conf.setAppName("Apriori FPM")
 
     val sc = new SparkContext(conf)
